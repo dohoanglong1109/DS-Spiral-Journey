@@ -1,0 +1,20 @@
+# Folder cấu hình của VS Code
+.vscode/
+
+# Folder môi trường ảo của Miniconda/Python
+env/
+venv/
+.env/
+
+# Các file rác hệ thống và trình duyệt
+.DS_Store
+thumbs.db
+
+# Các file tạm của Python
+__pycache__/
+*.py[cod]
+
+# File dữ liệu lớn không nên đẩy lên Git (nếu có)
+*.csv
+*.json
+!example.json
