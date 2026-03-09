@@ -18,11 +18,7 @@ df_specs = full_df[['Cpu', 'Ram', 'Memory', 'Gpu', 'OpSys', 'Weight', 'Price']].
 df_specs['laptop_id'] = df_laptops['laptop_id']
 #%%
 # 3. Đẩy vào SQLite ảo để luyện SQL
-conn = sqlite3.connect(':memory:')
+conn = sqlite3.connect('laptops.db')
 df_laptops.to_sql('Laptops', conn, index=False, if_exists='replace')
 df_specs.to_sql('Specs', conn, index=False, if_exists='replace')
-
-print("✅ Đã nạp thành công 1303 dòng dữ liệu!")
-print("Cột trong bảng Laptops:", df_laptops.columns.tolist())
-print("Cột trong bảng Specs:", df_specs.columns.tolist())
-# %%
+conn.close() # Đóng kết nối sau khi tạo xong
