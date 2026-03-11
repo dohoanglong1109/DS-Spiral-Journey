@@ -18,3 +18,4 @@ __pycache__/
 *.csv
 *.json
 !example.json
+*.db
