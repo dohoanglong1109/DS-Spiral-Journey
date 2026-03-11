@@ -3,7 +3,7 @@ import numpy as np
 
 def clean_numeric_cols(df):
     df['Ram'] = df['Ram'].str.replace('GB', '').astype(int)
-    df['Weight'] = df['Weight'].str.replace('kg', '').astype(int)
+    df['Weight'] = df['Weight'].str.replace('kg', '').astype(float)
     return df    
 
 def clean_screen_resolution(df):
@@ -70,4 +70,16 @@ def clean_cpu_gpu_os(df):
     df['OpSys'] = df['OpSys'].apply(catOS)
 
     df.drop(columns=['Cpu', 'Gpu', 'OpSys'], inplace=True)
+    return df
+
+# Encoding
+def apply_encoding(df):
+    df = df.copy()
+    
+    brand_counts = df['Company'].value_counts()
+    less_common = brand_counts[brand_counts <= 10].index
+    df['Company'] = df['Company'].replace(less_common, 'Other')
+    
+    df = pd.get_dummies(df, drop_first=True)
+    
     return df
