@@ -18,7 +18,9 @@ df_specs = full_df[['ScreenResolution', 'Inches', 'Cpu', 'Ram', 'Memory', 'Gpu',
 df_specs['laptop_id'] = df_laptops['laptop_id']
 #%%
 # 3. Đẩy vào SQLite ảo để luyện SQL
-conn = sqlite3.connect('laptops.db')
+conn = sqlite3.connect('../laptops.db')
 df_laptops.to_sql('Laptops', conn, index=False, if_exists='replace')
 df_specs.to_sql('Specs', conn, index=False, if_exists='replace')
 conn.close() # Đóng kết nối sau khi tạo xong
+
+# %%
