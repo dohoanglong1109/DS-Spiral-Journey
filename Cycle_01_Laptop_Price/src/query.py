@@ -6,7 +6,7 @@ import pandas as pd
 conn = sqlite3.connect('../laptops.db')
 
 sql_query = """
-    select L.Company, S.ScreenResolution, S.Inches, S.Cpu, S.Ram, S.Memory, S.Gpu, S.Weight, S.OpSys, S.Price
+    select L.Company, L.TypeName, S.ScreenResolution, S.Inches, S.Cpu, S.Ram, S.Memory, S.Gpu, S.Weight, S.OpSys, S.Price
     from Laptops L
     join Specs S on L.laptop_id = S.laptop_id
 """
