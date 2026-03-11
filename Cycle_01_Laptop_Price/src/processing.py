@@ -80,6 +80,14 @@ def apply_encoding(df):
     less_common = brand_counts[brand_counts <= 10].index
     df['Company'] = df['Company'].replace(less_common, 'Other')
     
-    df = pd.get_dummies(df, drop_first=True)
-    
+    cat_columns = ['Company', 'TypeName', 'Cpu_brand', 'Gpu_brand', 'OpSys']
+    df = pd.get_dummies(df, columns=cat_columns, drop_first=True)    
+
+    return df
+
+# 
+def transform_target(df):
+    df = df.copy()
+    # Đưa Price về phân phối chuẩn để Model học tốt hơn
+    df['Price'] = np.log1p(df['Price'])
     return df
