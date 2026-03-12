@@ -69,7 +69,7 @@ def main():
     mae = mean_absolute_error(y_test_real, y_pred_real)
 
     print(f"   -> Điểm R2 Score: {r2:.4f}")
-    print(f"   -> Sai số trung bình (MAE): lệch khoảng {mae:.2f} (đơn vị tiền tệ gốc)")
+    print(f"   -> Sai số trung bình (MAE): lệch khoảng {mae:.2f} (VND)")
 
     print("\n💾 BƯỚC 5: Xuất xưởng mô hình...")
     # Tạo thư mục models/ nếu chưa có
