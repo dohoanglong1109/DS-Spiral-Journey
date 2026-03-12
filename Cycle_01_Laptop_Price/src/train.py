@@ -45,8 +45,9 @@ def main():
 
     print("\n✂️ BƯỚC 2: Tách Features (X) và Target (y), chia tập Train/Test...")
     X = df.drop(columns=['Price'])
-    y = np.log1p(df['Price']) # Biến đổi logarit cho Price
-    
+    y = np.log1p(df['Price']*300) # Biến đổi logarit cho Price
+    # *300 ở đây vì giá gốc là Rupee, theo tỉ giá thì 1 Rupee = 300 VNĐ
+
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.15, random_state=42)
     print(f"   -> Tập Train: {X_train.shape[0]} dòng | Tập Test: {X_test.shape[0]} dòng")
 
