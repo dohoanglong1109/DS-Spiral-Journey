@@ -1,93 +1,79 @@
 import pandas as pd
 import numpy as np
+from sklearn.base import BaseEstimator, TransformerMixin
 
-def clean_numeric_cols(df):
-    df['Ram'] = df['Ram'].str.replace('GB', '').astype(int)
-    df['Weight'] = df['Weight'].str.replace('kg', '').astype(float)
-    return df    
-
-def clean_screen_resolution(df):
-    df = df.copy()
-    # PPI
-    xy_resolution = df['ScreenResolution'].str.extract(r'(\d+)x(\d+)')
-    x_res = xy_resolution[0].astype(int)
-    y_res = xy_resolution[1].astype(int)
-    df['PPI'] = np.sqrt((x_res)**2 + (y_res)**2) / df['Inches'].astype(float)
-
-    # screen resolution 
-    df['TouchScreen'] = df['ScreenResolution'].str.contains('Touchscreen', case=False).astype(int)
-    df['IPS'] = df['ScreenResolution'].str.contains('IPS', case=False).astype(int)
-
-    df = df.drop(columns=['ScreenResolution', 'Inches'])
-    return df
-
-def clean_memory(df):
-    ## memory
-    # Tạo bản sao để tránh cảnh báo SettingWithCopyWarning
-    df = df.copy() 
+class LaptopFeatureExtractor(BaseEstimator, TransformerMixin):
+    """Gộp các bước clean cơ bản không cần học tham số (stateless)"""
+    def fit(self, X, y=None):
+        return self
     
-    drive_types = ['SSD', 'HDD', 'Flash Storage', 'Hybrid']
-    
-    for drive in drive_types:
-        extracted = df['Memory'].str.extract(rf'(\d+)(GB|TB)\s+{drive}')  #-> [number, 'GB/TB']
-        size = pd.to_numeric(extracted[0])
-        multiplier = extracted[1].map({'GB': 1, 'TB': 1024})
-        df[f'{drive}'] = (size * multiplier).fillna(0).astype(int)
-    
-    df.drop(columns=['Memory'], inplace=True)    
-    return df
+    def transform(self, X):
+        X_copy = X.copy()
+        
+        # 1. Clean Numeric
+        X_copy['Ram'] = X_copy['Ram'].str.replace('GB', '').astype(int)
+        X_copy['Weight'] = X_copy['Weight'].str.replace('kg', '').astype(float)
+        
+        # 2. Clean Screen Resolution (Vectorized)
+        xy_resolution = X_copy['ScreenResolution'].str.extract(r'(\d+)x(\d+)')
+        X_copy['PPI'] = np.sqrt(xy_resolution[0].astype(int)**2 + xy_resolution[1].astype(int)**2) / X_copy['Inches'].astype(float)
+        X_copy['TouchScreen'] = X_copy['ScreenResolution'].str.contains('Touchscreen', case=False).astype(int)
+        X_copy['IPS'] = X_copy['ScreenResolution'].str.contains('IPS', case=False).astype(int)
+        
+        # 3. Clean Memory
+        drive_types = ['SSD', 'HDD', 'Flash Storage', 'Hybrid']
+        for drive in drive_types:
+            extracted = X_copy['Memory'].str.extract(rf'(\d+)(GB|TB)\s+{drive}')
+            size = pd.to_numeric(extracted[0])
+            multiplier = extracted[1].map({'GB': 1, 'TB': 1024})
+            X_copy[f'{drive}'] = (size * multiplier).fillna(0).astype(int)
+            
+        # 4. Clean GPU, CPU, OS
+        X_copy['Gpu_brand'] = X_copy['Gpu'].apply(lambda x: x.split()[0])
+        
+        X_copy.loc[X_copy['Gpu_brand'] == 'ARM', 'Gpu_brand'] = 'Other'
+        
+        X_copy['Cpu_brand'] = X_copy['Cpu'].apply(self._fetch_cpu)
+        X_copy['OpSys'] = X_copy['OpSys'].apply(self._cat_os)
+        
+        # Xóa các cột gốc
+        cols_to_drop = ['ScreenResolution', 'Inches', 'Memory', 'Cpu', 'Gpu'] 
+        X_copy = X_copy.drop(columns=cols_to_drop)
+        
+        return X_copy
 
-# ===Clean CPU, GPU, OS===
-def fetch_cpu(text):
-    words = text.split()
-    header = " ".join(words[:3])
-    if header == 'Intel Core i7' or header == 'Intel Core i5' or header == 'Intel Core i3':
-        return header
-    else:
-        if words[0] == 'Intel':
+    def _fetch_cpu(self, text):
+        words = text.split()
+        header = " ".join(words[:3])
+        if header in ['Intel Core i7', 'Intel Core i5', 'Intel Core i3']:
+            return header
+        elif words[0] == 'Intel':
             return 'Other Intel Processor'
         else:
             return 'AMD Processor'
 
-def catOS(text):
-    if "Windows" in text: 
-        return 'Windows'
-    if "Mac" in text or "mac" in text: 
-        return "MacOS"
-    else: 
-        return 'Others/No OS/Linux'
+    def _cat_os(self, text):
+        if "Windows" in text: 
+            return 'Windows'
+        elif "Mac" in text or "mac" in text: 
+            return "MacOS"
+        else: 
+            return 'Others/No OS/Linux'
 
-def clean_cpu_gpu_os(df):
-    df = df.copy()
-    # gpu
-    df['Gpu_brand'] = df['Gpu'].apply(lambda x: x.split()[0])
-    df = df[df['Gpu_brand'] != 'ARM']
-
-    # cpu
-    df['Cpu_brand'] = df['Cpu'].apply(fetch_cpu)
-
-    # os
-    df['OpSys'] = df['OpSys'].apply(catOS)
-
-    df.drop(columns=['Cpu', 'Gpu', 'OpSys'], inplace=True)
-    return df
-
-# Encoding
-def apply_encoding(df):
-    df = df.copy()
-    
-    brand_counts = df['Company'].value_counts()
-    less_common = brand_counts[brand_counts <= 10].index
-    df['Company'] = df['Company'].replace(less_common, 'Other')
-    
-    cat_columns = ['Company', 'TypeName', 'Cpu_brand', 'Gpu_brand', 'OpSys']
-    df = pd.get_dummies(df, columns=cat_columns, drop_first=True)    
-
-    return df
-
-# 
-def transform_target(df):
-    df = df.copy()
-    # Đưa Price về phân phối chuẩn để Model học tốt hơn
-    df['Price'] = np.log1p(df['Price'])
-    return df
+class CompanyRareLabelEncoder(BaseEstimator, TransformerMixin):
+    """Đây là một Stateful Transformer: Cần học xem hãng nào là hiếm từ tập Train"""
+    def __init__(self, tol=10):
+        self.tol = tol
+        self.common_companies_ = [] # Lưu trữ trạng thái học được
+        
+    def fit(self, X, y=None):
+        # Học từ tập Train: Tìm các hãng xuất hiện > tol lần
+        brand_counts = X['Company'].value_counts()
+        self.common_companies_ = brand_counts[brand_counts > self.tol].index.tolist()
+        return self
+        
+    def transform(self, X):
+        X_copy = X.copy()
+        # Áp dụng cho tập Transform: Hãng nào không nằm trong danh sách đã học -> gán là 'Other'
+        X_copy['Company'] = X_copy['Company'].where(X_copy['Company'].isin(self.common_companies_), 'Other')
+        return X_copy
