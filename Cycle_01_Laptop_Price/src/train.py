@@ -1,13 +1,17 @@
 # src/train.py
 import pandas as pd
 import numpy as np
+import os
+import joblib
+
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder
+from sklearn.ensemble import RandomForestRegressor # Mô hình AI
+from sklearn.metrics import r2_score, mean_absolute_error # Thước đo đánh giá
 
-# Import các module từ source code của bạn
-from src.config import CATEGORICAL_COLS
+from src.config import CATEGORICAL_COLS, BASE_DIR
 from src.data_ingestion import ingest_and_query_data
 from src.custom_transformers import LaptopFeatureExtractor, CompanyRareLabelEncoder
 
@@ -24,11 +28,12 @@ def build_preprocessing_pipeline():
         remainder='passthrough' # Các cột số (như Ram, Weight, PPI) được giữ nguyên đi tiếp
     )
 
-    # 2. Siêu băng chuyền: Nối các Custom Transformers với Preprocessor
+    # 2. Nối các Custom Transformers với Preprocessor
     full_pipeline = Pipeline(steps=[
-        ('feature_extractor', LaptopFeatureExtractor()),           # Bước 1: Rút trích đặc trưng
-        ('rare_company_encoder', CompanyRareLabelEncoder(tol=10)), # Bước 2: Xử lý hãng hiếm
-        ('encoder_and_router', preprocessor)                       # Bước 3: One-Hot Encoding
+        ('feature_extractor', LaptopFeatureExtractor()),           # 1. Rút trích đặc trưng
+        ('rare_company_encoder', CompanyRareLabelEncoder(tol=10)), # 2. Xử lý hãng hiếm
+        ('encoder_and_router', preprocessor),                      # 3. One-Hot Encoding        
+        ('model', RandomForestRegressor(n_estimators=100, random_state=42))                       
     ])
     
     return full_pipeline
@@ -48,18 +53,33 @@ def main():
     print("\n⚙️ BƯỚC 3: Đưa dữ liệu qua Pipeline chuẩn hóa...")
     pipeline = build_preprocessing_pipeline()
     
-    # Cho tập Train HỌC (fit) và BIẾN ĐỔI (transform)
-    X_train_processed = pipeline.fit_transform(X_train)
-    
-    # Tập Test CHỈ ĐƯỢC BIẾN ĐỔI (transform) dựa trên những gì đã học từ tập Train
-    X_test_processed = pipeline.transform(X_test)
+    # Ở bước này, Pipeline sẽ tự làm sạch X_train rồi đẩy thẳng vào RandomForest để học y_train
+    pipeline.fit(X_train, y_train)
 
-    print("\n✅ HOÀN TẤT! Dữ liệu đã sẵn sàng 100% để đưa vào Model.")
-    print(f"   -> Kích thước X_train sau mã hóa (toàn số): {X_train_processed.shape}")
-    print(f"   -> Kích thước X_test sau mã hóa (toàn số): {X_test_processed.shape}")
+    print("\n📊 BƯỚC 4: Đánh giá mô hình trên tập Test...")
+    y_pred_log = pipeline.predict(X_test)
     
-    # Trả về các biến này để bước tiếp theo huấn luyện mô hình
-    return X_train_processed, X_test_processed, y_train, y_test
+    # Tính R2 Score (Độ r-bình phương: càng gần 1.0 càng tốt)
+    r2 = r2_score(y_test, y_pred_log)
+    
+    # Tính MAE (Sai số tuyệt đối trung bình). Đảo ngược log để ra giá trị tiền thật
+    y_test_real = np.expm1(y_test)
+    y_pred_real = np.expm1(y_pred_log)
+    mae = mean_absolute_error(y_test_real, y_pred_real)
+
+    print(f"   -> Điểm R2 Score: {r2:.4f}")
+    print(f"   -> Sai số trung bình (MAE): lệch khoảng {mae:.2f} (đơn vị tiền tệ gốc)")
+
+    print("\n💾 BƯỚC 5: Xuất xưởng mô hình...")
+    # Tạo thư mục models/ nếu chưa có
+    models_dir = os.path.join(BASE_DIR, "models")
+    os.makedirs(models_dir, exist_ok=True)
+    
+    # Lưu toàn bộ Pipeline (bao gồm cả các bước làm sạch và model) thành file .joblib
+    model_path = os.path.join(models_dir, "laptop_price_pipeline.joblib")
+    joblib.dump(pipeline, model_path)
+    
+    print(f"✅ HOÀN TẤT! Mô hình đã được lưu tại: {model_path}")
 
 if __name__ == "__main__":
     main()
