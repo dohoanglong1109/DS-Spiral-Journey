@@ -1,0 +1,21 @@
+name: dsj
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  # --- Core Data Stack ---
+  - numpy
+  - pandas
+  - polars
+  - scikit-learn
+  - matplotlib-base
+  - seaborn
+  - scipy
+  # --- Bridge between Vim and Python ---
+  - ipykernel    # BẮT BUỘC: Để LazyVim (qua Molten/Iron) kết nối vào môi trường này
+  - debugpy      # Khuyên dùng: Để debugger của Neovim hoạt động mượt mà nhất
+  - pip:
+    - plotly     # Cho visualization xịn xò
+    - tqdm       # Thanh tiến trình
