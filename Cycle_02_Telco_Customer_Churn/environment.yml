@@ -1,4 +1,4 @@
-name: dsj
+name: cycle02
 channels:
   - conda-forge
   - defaults
@@ -13,6 +13,9 @@ dependencies:
   - matplotlib-base
   - seaborn
   - scipy
+  - pyyaml           # Để đọc configs/config.yaml
+  - python-dotenv    # Để quản lý biến môi trường
+  - imbalanced-learn # Cực kỳ cần thiết cho bài toán Churn (xử lý lệch dữ liệu)
   # --- Bridge between Vim and Python ---
   - ipykernel    # BẮT BUỘC: Để LazyVim (qua Molten/Iron) kết nối vào môi trường này
   - debugpy      # Khuyên dùng: Để debugger của Neovim hoạt động mượt mà nhất
